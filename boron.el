@@ -1,7 +1,22 @@
+;;; boron.el --- Integration testing
+
+;; Copyright (C) 2015 Andrey Tykhonov <atykhonov@gmail.com>
+
+;; Author: Andrey Tykhonov <atykhonov@gmail.com>
+;; Maintainer: Andrey Tykhonov <atykhonov@gmail.com>
+;; Version: 0.0.1
+;; Keywords: test
+;; URL: http://github.com/atykhonov/boron.el
+;; Package-Requires: ((s "1.6.1") (dash "1.8.0") (f "0.10.0") (commander "0.2.0") (ansi "0.1.0"))
+
+;; This file is NOT part of GNU Emacs.
+
+(require 'edmacro)
 (require 'f)
 (require 'ansi)
+(require 'commander)
 
-(defvar boron-path (f-dirname (f-this-file)))
+;; (defvar boron-path (f-dirname (f-this-file)))
 
 (defvar boron-font-lock-keywords
   ;; Keywords
@@ -43,6 +58,12 @@
 (defvar boron-reporter-feature-hooks nil
   "Feature hooks.")
 
+(defvar boron-reporter-before-feature-hook nil
+  "Feature hook.")
+
+(defvar boron-reporter-before-scenario-hook nil
+  "Scenario hook.")
+
 (defun boron-eval-current-buffer ()
   (interactive)
   (let ((win (selected-window))
@@ -56,6 +77,8 @@
         (pos nil)
         (lines (list))
         (config nil))
+    ;; (add-hook 'boron-reporter-before-feature-hook 'boron-reporter-feature)
+    ;; (add-hook 'boron-reporter-before-scenario-hook 'boron-reporter-scenario)
     (with-current-buffer report-buffer
       (erase-buffer))
     (with-current-buffer test-buffer
@@ -96,9 +119,9 @@
                                        (setq arg " SPC "))
                                      (setq result (concat result arg)))
                                    result))
-                               (split-string (substring line 4) "" t)))))))
-        (search-forward "\n" nil t)
-        (setq lines (append lines (list line)))))
+                               (split-string (substring line 4) "" t))))))
+          (setq lines (append lines (list line))))
+        (search-forward "\n" nil t)))
     ;; (setq win (selected-window))
     (pop-to-buffer report-buffer)
     (setq config (current-window-configuration))
@@ -117,13 +140,11 @@
 
 (defun boron-feature (feature)
   (interactive "sFeature: ")
-  (boron-reporter-feature feature)
-  (setq boron-current-feature feature))
+  (run-hook-with-args 'boron-reporter-before-feature-hook feature))
 
 (defun boron-scenario (scenario)
   (interactive "sScenario: ")
-  (boron-reporter-scenario scenario)
-  (setq boron-current-scenario scenario))
+  (run-hook-with-args 'boron-reporter-before-scenario-hook scenario))
 
 (defun boron-assert-equal (assertion)
   (interactive "sEqual to: ")
@@ -207,4 +228,51 @@
   
   (set (make-local-variable 'paragraph-start) "\\s-*$"))
 
+(defun boron-reporter-cli-feature (feature)
+  (interactive)
+  (let* ((header (format "Feature: %s" feature)))
+    (princ (ansi-red header))))
+
+(defun boron-reporter-cli-scenario (scenario)
+  (interactive)
+  (let* ((header (format "Scenario: %s" scenario)))
+    (princ (ansi-cyan header))))
+
+(defun boron-cli ()
+  (interactive)
+  (find-file "example.boron")
+  (add-hook 'boron-reporter-before-feature-hook 'boron-reporter-cli-feature)
+  (add-hook 'boron-reporter-before-scenario-hook 'boron-reporter-cli-scenario)
+  (boron-eval-current-buffer))
+
+
+;; (setq commander-args (-reject 's-blank? (s-split " " (getenv "BORON_RUNNER_ARGS"))))
+
+(commander
+ (name "boron")
+ (description "Opinionated Ert testing workflow")
+ (config ".boron")
+
+ (default boron-cli)
+
+ ;; (option "--help, -h" ert-runner/usage)
+ ;; (option "--pattern <pattern>, -p <pattern>" ert-runner/pattern)
+ ;; (option "--tags <tags>, -t <tags>" ert-runner/tags)
+ ;; (option "--load <*>, -l <*>" ert-runner/load)
+ ;; (option "--debug" ert-runner/debug)
+ ;; (option "--quiet" ert-runner/quiet)
+ ;; (option "--verbose" ert-runner/verbose)
+ ;; (option "--reporter <name>" ert-runner/set-reporter)
+ ;; (option "-L <path>" ert-runner/load-path)
+
+ ;; (option "--script" "Run Emacs as a script/batch job (default)" ignore)
+ ;; (option "--no-win" "Run Emacs without GUI window" ignore)
+ ;; (option "--win" "Run Emacs with full GUI window" ignore)
+
+ (command "init [name]" boron-cli)
+ (command "help" boron-cli)
+ )
+
 (provide 'boron)
+
+;;; boron.el ends here

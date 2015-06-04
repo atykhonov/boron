@@ -1,0 +1,11 @@
+#!/bin/sh
+EMACS=emacs
+OPTIONS="-L . -L $HOME/emacs/lisp"
+OUTPUT=/tmp/.el-expectations
+touch $OUTPUT
+# --no-site-file
+$EMACS -q --batch $OPTIONS -l boron -l ../google-translate/google-translate-core.el -l ../google-translate/google-translate-core-ui.el -l ../google-translate/google-translate-default-ui.el -l ../google-translate/google-translate-smooth-ui.el -l ../google-translate/google-translate.el -f boron-cli $OUTPUT "$@"
+ret=$?
+cat $OUTPUT
+rm $OUTPUT
+exit $ret

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+BORON_RUNNER="$(dirname $(dirname $0))/boron.el"
+
+if [[ -n "$INSIDE_EMACS" ]]; then
+  BORON_RUNNER_EMACS="emacs"
+else
+  BORON_RUNNER_EMACS="${EMACS:-emacs}"
+fi
+
+function has_option {
+  for opt in "${@:2}"; do
+    [[ "$opt" == "$1" ]] && return 0;
+  done
+  return 1
+}
+
+export BORON_RUNNER_ARGS="${@}"
+
+if has_option "--win" $@ || has_option "--no-win" $@ ; then
+  export BORON_RUNNER_OUTFILE=$(mktemp /tmp/boron-runner.XXX)
+
+  if has_option "--win" $@; then
+    "$BORON_RUNNER_EMACS" --load "$BORON_RUNNER" -Q
+  else
+    "$BORON_RUNNER_EMACS" -nw --load "$BORON_RUNNER" -Q
+  fi
+
+  STATUS=$?
+
+  cat $BORON_RUNNER_OUTFILE
+  rm -f $BORON_RUNNER_OUTFILE
+
+  exit $STATUS
+else
+  "$BORON_RUNNER_EMACS" --script "$BORON_RUNNER" -Q
+fi
