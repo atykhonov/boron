@@ -11,10 +11,12 @@
 
 ;; This file is NOT part of GNU Emacs.
 
-(require 'edmacro)
 (require 'f)
 (require 'ansi)
 (require 'commander)
+(require 'boron-parse)
+(require 'boron-exec)
+(require 'boron-reporter)
 
 ;; (defvar boron-path (f-dirname (f-this-file)))
 
@@ -49,102 +51,16 @@
            "copyright" "credits" "exit" "license" "quit")
           symbol-end) . font-lock-constant-face)))
 
-(defvar boron-current-feature nil
-  "Temporal variable which holds current feature.")
-
-(defvar boron-current-scenario nil
-  "Temporal variable which holds current scenario.")
-
-(defvar boron-reporter-feature-hooks nil
-  "Feature hooks.")
-
-(defvar boron-reporter-before-feature-hook nil
-  "Feature hook.")
-
-(defvar boron-reporter-before-scenario-hook nil
-  "Scenario hook.")
-
 (defun boron-eval-current-buffer ()
   (interactive)
-  (let ((win (selected-window))
-        (test-buffer (get-buffer-create "*test-buffer*"))
-        (report-buffer (get-buffer-create "*boron-report*"))
+  (let ((report-buffer (get-buffer-create "*boron-report*"))
         (curr-buffer (buffer-name (current-buffer)))
-        (line nil)
-        (continue t)
-        (start nil)
-        (end nil)
-        (pos nil)
-        (lines (list))
-        (config nil))
-    ;; (add-hook 'boron-reporter-before-feature-hook 'boron-reporter-feature)
-    ;; (add-hook 'boron-reporter-before-scenario-hook 'boron-reporter-scenario)
-    (with-current-buffer report-buffer
-      (erase-buffer))
-    (with-current-buffer test-buffer
-      (erase-buffer))
-    (with-current-buffer curr-buffer
-      (goto-char (point-min))
-      (while (not (eobp))
-        (setq line (buffer-substring-no-properties
-                    (line-beginning-position)
-                    (line-end-position)))
-        (when (> (length line) 0)
-          (cond ((equal (substring line 0 3) "M-x")
-                 (let ((begin nil)
-                       (end nil))
-                   (while (string-match "\\(\".+?\"\\)" line)
-                     (setq begin (match-beginning 1))
-                     (setq end (match-end 1))
-                     (setq line (concat
-                                 (substring line 0 begin)
-                                 (concat (apply (lambda (&rest args)
-                                                  (let ((result ""))
-                                                    (dolist (arg args)
-                                                      (when (equal arg " ")
-                                                        (setq arg " SPC "))
-                                                      (setq result (concat result arg)))
-                                                    result))
-                                                (split-string (substring line (+ begin 1) (- end 1))
-                                                              "" t)))
-                                 (substring line end))))))
-                ((equal (substring line 0 3) "M-:")
-                 (setq line
-                       (concat
-                        "M-: "
-                        (apply (lambda (&rest args)
-                                 (let ((result ""))
-                                   (dolist (arg args)
-                                     (when (equal arg " ")
-                                       (setq arg " SPC "))
-                                     (setq result (concat result arg)))
-                                   result))
-                               (split-string (substring line 4) "" t))))))
-          (setq lines (append lines (list line))))
-        (search-forward "\n" nil t)))
-    ;; (setq win (selected-window))
+        (lines (list)))
+    (setq lines (boron-parse-buffer curr-buffer))
     (pop-to-buffer report-buffer)
-    (setq config (current-window-configuration))
-    (setq win (selected-window))
     (while (> (length lines) 0)
-      (setq line (pop lines))
-      (when (not (equal (substring line 0 1) "#"))
-        (unwind-protect
-            (with-current-buffer test-buffer
-              (set-window-buffer win test-buffer t)
-              (execute-kbd-macro
-               (edmacro-parse-keys line)))
-          (set-window-buffer win report-buffer t)))
-      (sit-for 0.1))
-    (set-window-configuration config)))
-
-(defun boron-feature (feature)
-  (interactive "sFeature: ")
-  (run-hook-with-args 'boron-reporter-before-feature-hook feature))
-
-(defun boron-scenario (scenario)
-  (interactive "sScenario: ")
-  (run-hook-with-args 'boron-reporter-before-scenario-hook scenario))
+      (boron-exec (pop lines))
+      (sit-for 0.1))))
 
 (defun boron-assert-equal (assertion)
   (interactive "sEqual to: ")
@@ -173,19 +89,13 @@
   (with-current-buffer (get-buffer-create "*boron-report*")
     (insert (concat "*** Test failed!" "\n"))))
 
-(defun boron-reporter-feature (feature)
+(defun boron-reporter-testcase (testcase)
   (with-current-buffer (get-buffer-create "*boron-report*")
-    (insert (concat "* " feature "\n"))))
+    (insert (concat "* " testcase "\n"))))
 
-(defun boron-reporter-scenario (scenario)
+(defun boron-reporter-test (test)
   (with-current-buffer (get-buffer-create "*boron-report*")
-    (insert (concat "** " scenario "\n"))))
-
-(defun boron-insert (text)
-  (interactive "sText: ")
-  (let ((test-buffer "*test-buffer*"))
-    (with-current-buffer test-buffer
-      (insert text))))
+    (insert (concat "** " test "\n"))))
 
 (defconst boron-syntax-propertize-function
   (syntax-propertize-rules
@@ -228,50 +138,50 @@
   
   (set (make-local-variable 'paragraph-start) "\\s-*$"))
 
-(defun boron-reporter-cli-feature (feature)
+(defun boron-reporter-cli-testcase (testcase)
   (interactive)
-  (let* ((header (format "Feature: %s" feature)))
+  (let* ((header (format "Test Case: %s" testcase)))
     (princ (ansi-red header))))
 
-(defun boron-reporter-cli-scenario (scenario)
+(defun boron-reporter-cli-scenario (test)
   (interactive)
-  (let* ((header (format "Scenario: %s" scenario)))
+  (let* ((header (format "Test: %s" test)))
     (princ (ansi-cyan header))))
 
 (defun boron-cli ()
   (interactive)
   (find-file "example.boron")
-  (add-hook 'boron-reporter-before-feature-hook 'boron-reporter-cli-feature)
-  (add-hook 'boron-reporter-before-scenario-hook 'boron-reporter-cli-scenario)
+  (add-hook 'boron-testcase-hook 'boron-reporter-cli-feature)
+  (add-hook 'boron-before-test-hook 'boron-reporter-cli-scenario)
   (boron-eval-current-buffer))
 
 
 ;; (setq commander-args (-reject 's-blank? (s-split " " (getenv "BORON_RUNNER_ARGS"))))
 
-(commander
- (name "boron")
- (description "Opinionated Ert testing workflow")
- (config ".boron")
+;; (commander
+;;  (name "boron")
+;;  (description "Opinionated Ert testing workflow")
+;;  (config ".boron")
 
- (default boron-cli)
+;;  (default boron-cli)
 
- ;; (option "--help, -h" ert-runner/usage)
- ;; (option "--pattern <pattern>, -p <pattern>" ert-runner/pattern)
- ;; (option "--tags <tags>, -t <tags>" ert-runner/tags)
- ;; (option "--load <*>, -l <*>" ert-runner/load)
- ;; (option "--debug" ert-runner/debug)
- ;; (option "--quiet" ert-runner/quiet)
- ;; (option "--verbose" ert-runner/verbose)
- ;; (option "--reporter <name>" ert-runner/set-reporter)
- ;; (option "-L <path>" ert-runner/load-path)
+;;  ;; (option "--help, -h" ert-runner/usage)
+;;  ;; (option "--pattern <pattern>, -p <pattern>" ert-runner/pattern)
+;;  ;; (option "--tags <tags>, -t <tags>" ert-runner/tags)
+;;  ;; (option "--load <*>, -l <*>" ert-runner/load)
+;;  ;; (option "--debug" ert-runner/debug)
+;;  ;; (option "--quiet" ert-runner/quiet)
+;;  ;; (option "--verbose" ert-runner/verbose)
+;;  ;; (option "--reporter <name>" ert-runner/set-reporter)
+;;  ;; (option "-L <path>" ert-runner/load-path)
 
- ;; (option "--script" "Run Emacs as a script/batch job (default)" ignore)
- ;; (option "--no-win" "Run Emacs without GUI window" ignore)
- ;; (option "--win" "Run Emacs with full GUI window" ignore)
+;;  ;; (option "--script" "Run Emacs as a script/batch job (default)" ignore)
+;;  ;; (option "--no-win" "Run Emacs without GUI window" ignore)
+;;  ;; (option "--win" "Run Emacs with full GUI window" ignore)
 
- (command "init [name]" boron-cli)
- (command "help" boron-cli)
- )
+;;  (command "init [name]" boron-cli)
+;;  (command "help" boron-cli)
+;;  )
 
 (provide 'boron)
 
