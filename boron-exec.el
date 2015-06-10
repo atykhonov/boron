@@ -5,7 +5,6 @@
   (execute-kbd-macro
    (edmacro-parse-keys command)))
 
-
 (defun boron-exec-protected (command wwwin temp-buffer orig-buffer)
   (let ((win (selected-window)))
     (unwind-protect

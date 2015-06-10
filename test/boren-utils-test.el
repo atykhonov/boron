@@ -80,3 +80,34 @@
                    (buffer-substring (point-min) (point-max))
                  (kill-buffer test-buffer)))
              test-text))))
+
+(ert-deftest test-boron-utils/boron-setup ()
+  (let ((temp-buffer (get-buffer-create "*temp-buffer*")))
+    (pop-to-buffer temp-buffer)
+    (setq boron-after-test-hook nil)
+    (setq boron-before-test-hook nil)
+    (setq boron-at-least-one-test-was-executed nil)
+    (with-current-buffer temp-buffer
+      (insert "test\n")
+      (insert "test\n")
+      (insert "test")
+      (goto-char (point-min))
+      (boron-exec
+       (boron-parse-line "M-x boron-teardown RET replace-string RET \"test best rest\" RET best"))
+      (boron-exec "M-x boron-test RET test")
+      (boron-exec "M-x boron-test RET test")
+
+      (should (equal (nth 0 boron-after-test-hook)
+                     (lambda (test)
+                       (interactive)
+                       (replace-string "test best rest" "best" nil
+                                       (if
+                                           (and transient-mark-mode mark-active)
+                                           (region-beginning))
+                                       (if
+                                           (and transient-mark-mode mark-active)
+                                           (region-end))
+                                       nil))))
+      
+      (setq boron-after-test-hook nil)
+      (kill-buffer temp-buffer))))

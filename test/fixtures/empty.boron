@@ -1,0 +1,1 @@
+M-x replace-string RET foo RET baz
