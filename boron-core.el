@@ -9,7 +9,11 @@
 
 (defun boron-setup (command)
   (interactive (list (read-command "Command: ")))
-  (call-interactively command))
+  (call-interactively command)
+  (add-hook 'boron-before-test-hook
+            `(lambda (test)
+               (interactive)
+               ,(nth 0 command-history))))
 
 (defun boron-teardown (command)
   (interactive (list (read-command "Command: ")))
@@ -26,8 +30,8 @@
 (defun boron-test (test)
   (interactive "sTest: ")
   (when boron-at-least-one-test-was-executed
-    (run-hook-with-args 'boron-after-test-hook test))
-  (run-hook-with-args 'boron-before-test-hook test)
+    (run-hook-with-args 'boron-after-test-hook test)
+    (run-hook-with-args 'boron-before-test-hook test))
   (setq boron-at-least-one-test-was-executed t))
 
 (defun boron-assert-equal (assertion)
