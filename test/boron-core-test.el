@@ -1,48 +1,70 @@
+(require 'cl)
 (require 'boron-core)
+(require 'boron-exec)
 
 
-(ert-deftest test-core/boron-setup-unconditional-execution-when-is-declared ()
+(ert-deftest test-core/boron-hooks-are-empty ()
   (with-test-hooks
-   (should
-    (string-prefix-p
-     "Loret Ipsut is sitply dutty text of the"
-     (with-test-buffer ()
-                       (boron-exec "M-x boron-setup RET replace-string RET m RET t"))))))
+      (should (equal boron-testcase-hook nil))
+      (should (equal boron-test-hook nil))
+    (with-test-buffer ()
+                      (boron-exec "M-x boron-test RET foo"))
+    (should (equal boron-testcase-hook nil))
+    (should (equal boron-test-hook nil))))
 
-(ert-deftest test-core/boron-setup-doesnt-execute-in-the-hook-before-first-test ()
-  (with-test-hooks
-   (should
-    (string-prefix-p
-     "Lorem Ipsum is simply dummy mexm"
-     (with-test-buffer ()
-                       (boron-exec "M-x boron-setup RET replace-string RET m RET t")
-                       (boron-exec "M-x beginning-of-buffer")
-                       (boron-exec "M-x replace-string RET t RET m")
-                       (boron-exec "M-x boron-test"))))))
-;; TODO: change all these boron-exec to:
-;;
-;; (boron-exec (list "M-x command"
-;;                   "M-x command"))
-;;
-;; write a test for the boron-exec with the mocks (learn it!)
+(ert-deftest test-core/boron-testcase-hook ()
+  (let ((test-hook-called nil))
+    (with-test-hooks
+        (add-hook 'boron-testcase-hook
+                  (lambda (test)
+                    (interactive)
+                    (setq test-hook-called t)))
+        (with-test-buffer ()
+                          (boron-testcase "TestCase foo.")))
+    (should (equal test-hook-called t))))
 
-(ert-deftest test-core/boron-setup-before-second-test ()
-  (with-test-hooks
-   (should
-    (string-prefix-p
-     "Loret Ipset is sitply detty text of the"
-     (with-test-buffer ()
-                       (boron-exec "M-x boron-setup RET replace-string RET m RET t")
-                       (boron-exec "M-x boron-test RET test")
-                       (boron-exec "M-x beginning-of-buffer")
-                       (boron-exec "M-x replace-string RET ut RET em")
-                       (boron-exec "M-x beginning-of-buffer")
-                       (boron-exec "M-x boron-test RET test2"))))))
+(ert-deftest test-core/boron-test-hook ()
+  (let ((test-hook-called nil))
+    (with-test-hooks
+        (add-hook 'boron-test-hook
+                  (lambda (test)
+                    (interactive)
+                    (setq test-hook-called t)))
+        (with-test-buffer ()
+                          (boron-exec "M-x boron-test RET foo")))
+    (should (equal test-hook-called t))))
 
-(ert-deftest test-core/boron-teardown-unconditional-execution-when-is-declared ()
-  (with-test-hooks
-   (should
-    (string-prefix-p
-     "Loret Ipsut is sitply dutty text of the"
-     (with-test-buffer ()
-                       (boron-exec "M-x boron-teardown RET replace-string RET m RET t"))))))
+(ert-deftest boron-assert-buffer-equal/test-passed ()
+  (let ((test-passed nil))
+    (add-hook 'boron-test-passed
+              (lambda ()
+                (interactive)
+                (setq test-passed t)))
+    (with-test-buffer
+     (erase-buffer)
+     (insert "TestBestRest")
+     (boron-exec "M-x boron-assert-buffer-equal RET test-buffer RET TestBestRest"))
+    (should (equal test-passed t))))
+
+(ert-deftest boron-assert-buffer-equal/test-failed ()
+  (let ((test-failed nil))
+    (add-hook 'boron-test-failed
+              (lambda ()
+                (interactive)
+                (setq test-failed t)))
+    (with-test-buffer
+     (erase-buffer)
+     (insert "FooBarBaz")
+     (boron-exec "M-x boron-assert-buffer-equal RET test-buffer RET TestBestRest"))
+    (should (equal test-failed t))))
+
+(ert-deftest boron-assert-buffer-contains/test-passed ()
+  (interactive)
+  (let ((test-passed nil))
+    (add-hook 'boron-test-passed
+              (lambda ()
+                (interactive)
+                (setq test-passed t)))
+    (with-test-buffer
+     (boron-exec "M-x boron-assert-buffer-contains RET test-buffer RET Lorem SPC Ipsum")))
+  )

@@ -1,9 +1,15 @@
 (require 'edmacro)
 
 
-(defun boron-exec (command)
+(defun boron--exec (command)
   (execute-kbd-macro
    (edmacro-parse-keys command)))
+
+(defun boron-exec (command)
+  (if (listp command)
+      (dolist (cmd command)
+        (boron--exec cmd))
+    (boron--exec command)))
 
 (defun boron-exec-protected (command wwwin temp-buffer orig-buffer)
   (let ((win (selected-window)))

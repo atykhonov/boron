@@ -26,3 +26,8 @@
 
 (ert-deftest test-exec/command-with-c-c ()
   (boron-exec "C-c C-c"))
+
+(ert-deftest boron-exec/list ()
+  (boron-exec (list "C-c C-c"
+                    "M-x forward-word"
+                    "M-: (forward-word)")))

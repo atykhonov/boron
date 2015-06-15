@@ -1,14 +1,9 @@
 M-x boron-testcase RET "Smooth UI for Google Translate" RET
 
-M-x boron-setup RET boron-pop-to-new-buffer RET "test-buffer"
-M-x boron-setup RET boron-insert RET "Lorem Ipsum is simply dummy text of the printing"
-
 M-x boron-test RET "Translate a word at point" RET
 M-x search-backward RET text
 M-x google-translate-smooth-translate RET RET
 M-x boron-assert-buffer-contains RET "*Google Translate*" RET текст
-
-M-x boron-teardown RET kill-buffer RET "test-buffer"
 
 M-x boron-test RET "Translate from english to ukraine." RET
 M-x google-translate-smooth-translate RET C-l C-n C-n book

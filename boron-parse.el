@@ -5,8 +5,8 @@
                             (replace-regexp-in-string "[ \t\n\r]*\\'" "" string)))
 
 (defun boron-parse-line (line)
-  (let ((result nil)
-        (line (boron-trim-string line)))
+  (let* ((result nil)
+         (line (boron-trim-string line)))
     (if (> (length line) 0)
         (cond ((equal (substring line 0 1) "#")
                (setq result nil))

@@ -20,18 +20,6 @@
   (boron-testcase "testcase")
   (should (equal test-hook-result "testcase")))
 
-(ert-deftest test-boron-test/before-hook ()
-  (add-hook 'boron-before-test-hook 'test-before-test-hook)
-  (boron-test "test")
-  (should (equal test-hook-result "test")))
-
-(ert-deftest test-boron-test/after-hook ()
-  (add-hook 'boron-after-test-hook 'test-after-test-hook)
-  (boron-test "test")
-  (should (equal test-hook-result nil))
-  (boron-test "test2")
-  (should (equal test-hook-result "test2")))
-
 ;; There is a problem regarding the setup recent ideas. We need to collect all
 ;; commands between boron-feature-setup and the next predefined command. Predefined
 ;; command may be boron-scenario, boron-teardown and so on. But I really dislike that
@@ -81,33 +69,33 @@
                  (kill-buffer test-buffer)))
              test-text))))
 
-(ert-deftest test-boron-utils/boron-setup ()
-  (let ((temp-buffer (get-buffer-create "*temp-buffer*")))
-    (pop-to-buffer temp-buffer)
-    (setq boron-after-test-hook nil)
-    (setq boron-before-test-hook nil)
-    (setq boron-at-least-one-test-was-executed nil)
-    (with-current-buffer temp-buffer
-      (insert "test\n")
-      (insert "test\n")
-      (insert "test")
-      (goto-char (point-min))
-      (boron-exec
-       (boron-parse-line "M-x boron-teardown RET replace-string RET \"test best rest\" RET best"))
-      (boron-exec "M-x boron-test RET test")
-      (boron-exec "M-x boron-test RET test")
+;; (ert-deftest test-boron-utils/boron-setup ()
+;;   (let ((temp-buffer (get-buffer-create "*temp-buffer*")))
+;;     (pop-to-buffer temp-buffer)
+;;     (setq boron-after-test-hook nil)
+;;     (setq boron-before-test-hook nil)
+;;     (setq boron-at-least-one-test-was-executed nil)
+;;     (with-current-buffer temp-buffer
+;;       (insert "test\n")
+;;       (insert "test\n")
+;;       (insert "test")
+;;       (goto-char (point-min))
+;;       (boron-exec
+;;        (boron-parse-line "M-x boron-teardown RET replace-string RET \"test best rest\" RET best"))
+;;       (boron-exec "M-x boron-test RET test")
+;;       (boron-exec "M-x boron-test RET test")
 
-      (should (equal (nth 0 boron-after-test-hook)
-                     (lambda (test)
-                       (interactive)
-                       (replace-string "test best rest" "best" nil
-                                       (if
-                                           (and transient-mark-mode mark-active)
-                                           (region-beginning))
-                                       (if
-                                           (and transient-mark-mode mark-active)
-                                           (region-end))
-                                       nil))))
+;;       (should (equal (nth 0 boron-after-test-hook)
+;;                      (lambda (test)
+;;                        (interactive)
+;;                        (replace-string "test best rest" "best" nil
+;;                                        (if
+;;                                            (and transient-mark-mode mark-active)
+;;                                            (region-beginning))
+;;                                        (if
+;;                                            (and transient-mark-mode mark-active)
+;;                                            (region-end))
+;;                                        nil))))
       
-      (setq boron-after-test-hook nil)
-      (kill-buffer temp-buffer))))
+;;       (setq boron-after-test-hook nil)
+;;       (kill-buffer temp-buffer))))

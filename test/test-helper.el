@@ -24,7 +24,8 @@
 (defmacro with-test-hooks (&rest body)
   (declare (doc-string 3) (indent 2))
   `(progn
-     (setq boron-after-test-hook nil)
-     (setq boron-before-test-hook nil)
-     (setq boron-at-least-one-test-was-executed nil)
-     ,@body))
+     (setq boron-testcase-hook nil)
+     (setq boron-test-hook nil)
+     ,@body
+     (setq boron-testcase-hook nil)
+     (setq boron-test-hook nil)))
